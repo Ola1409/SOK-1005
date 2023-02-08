@@ -1,0 +1,138 @@
+---
+title: "SOK1005_arbeidskrav1"
+format: pdf
+editor: visual
+---
+
+```{r}
+rm(list = ls())
+library(xml2)
+library(rvest)
+library(zoo)
+library(dplyr)
+library(ggplot2)
+options(digits = 2)
+
+#Fetching the url and making it a table
+url_lower_tropo <- "https://www.nsstc.uah.edu/data/msu/v6.0/tlt/uahncdc_lt_6.0.txt"
+page_lower_tropo <- read_html(url_lower_tropo)
+table_lower_tropo <- read.table(url_lower_tropo, fill = TRUE)
+
+#Choosing which variables I want to have
+table_lower_tropo <- subset(table_lower_tropo, select = c(1, 3))
+colnames(table_lower_tropo) <- c("year", "temp")
+table_lower_tropo <- table_lower_tropo[-1,]
+
+#Changing it to numeric
+table_lower_tropo$year <- as.numeric(table_lower_tropo$year)
+table_lower_tropo$temp <- as.numeric(table_lower_tropo$temp)
+
+#Filtering for over 1980 and making an average
+table_lower_tropo <- table_lower_tropo %>%
+  group_by(year) %>%
+  filter(year >= 1980) %>%
+  mutate(average_lower_tropo = mean(temp, k = 12, align = "right", fill = NA,
+                                na.pad = FALSE))
+
+#For some reason, rollmeans doesnt work so I have tried with mean
+```
+
+```{r}
+#Mid-troposphere
+url_mid_tropo <- "https://www.nsstc.uah.edu/data/msu/v6.0/tmt/uahncdc_mt_6.0.txt"
+page_mid_tropo <- read_html(url_mid_tropo)
+table_mid_tropo <- read.table(url_mid_tropo, fill = TRUE)
+
+table_mid_tropo <- subset(table_mid_tropo, select = c(1, 3))
+colnames(table_mid_tropo) <- c("year", "temp")
+table_mid_tropo <- table_mid_tropo[-1,]
+
+table_mid_tropo$year <- as.numeric(table_mid_tropo$year)
+table_mid_tropo$temp <- as.numeric(table_mid_tropo$temp)
+
+
+table_mid_tropo <- table_mid_tropo %>%
+  filter(year >= 1980) %>%
+    mutate(average_mid_tropo = mean(temp, k = 12, align = "right", fill = NA,
+                                na.pad = FALSE))
+```
+
+```{r}
+#Tropopause
+url_pause <- "https://www.nsstc.uah.edu/data/msu/v6.0/tmt/uahncdc_mt_6.0.txt"
+page_pause <- read_html(url_pause)
+table_pause <- read.table(url_pause, fill = TRUE)
+
+table_pause <- subset(table_pause, select = c(1, 3))
+colnames(table_pause) <- c("year", "temp")
+table_pause <- table_pause[-1,]
+
+table_pause$year <- as.numeric(table_pause$year)
+table_pause$temp <- as.numeric(table_pause$temp)
+
+
+table_pause <- table_pause%>%
+  filter(year >= 1980) %>%
+    mutate(average_pause = mean(temp, k = 12, align = "right", fill = NA,
+                                na.pad = FALSE))
+```
+
+```{r}
+#Lower Stratosphere
+url_stratos <- "https://www.nsstc.uah.edu/data/msu/v6.0/tls/uahncdc_ls_6.0.txt"
+page_stratos <- read_html(url_stratos)
+table_stratos <- read.table(url_stratos, fill = TRUE)
+
+table_stratos <- subset(table_stratos, select = c(1, 3))
+colnames(table_stratos) <- c("year", "temp")
+table_stratos <- table_stratos[-1,]
+
+table_stratos$year <- as.numeric(table_stratos$year)
+table_stratos$temp <- as.numeric(table_stratos$temp)
+
+
+table_stratos <- table_stratos %>%
+  filter(year >= 1980) %>%
+    mutate(average_stratos = mean(temp, k = 12, align = "right", fill = NA,
+                                na.pad = FALSE))
+```
+
+```{r}
+#Creating a total average table with all averages
+total_average <- table_lower_tropo %>%
+  select(-temp) %>% #removing Globe data as we dont need it for the plot
+  cbind(average_mid_tropo = table_mid_tropo$average_mid_tropo,
+        average_pause = table_pause$average_pause,
+        average_stratos = table_stratos$average_stratos)
+```
+
+```{r}
+#Plotting with the total_average table
+ggplot(total_average, aes(x = year, y = average_lower_tropo,
+                          color = "Lower Troposphere")) +
+  geom_line(aes(y = average_mid_tropo, color = "Middle troposphere")) +
+  geom_line(aes(y = average_pause, color = "Tropopause")) +
+  geom_line(aes(y = average_stratos, color = "Lower stratosphere")) +
+  labs(title = "12 month average temperature",
+          subtitle = "In different parts of the atmosphere", 
+       color = "Part of atmosphere") +
+  xlab("Years") +
+  ylab("Temperature") +
+  scale_x_continuous()
+```
+
+```{r}
+#Trying again without the total average table
+ggplot(table_lower_tropo, aes(x = year, y = temp, color = "Lower Troposphere")) +
+  geom_line(data = table_mid_tropo, aes(color = "Middle troposphere")) +
+  geom_line(data = table_pause, aes(color = "Tropopause")) +
+  geom_line(data = table_stratos, aes(color = "Lower stratosphere")) +
+  labs(title = "12 month average temperature",
+          subtitle = "In different parts of the atmosphere", 
+       color = "Part of atmosphere") +
+  xlab("Years") +
+  ylab("Temperature") +
+  scale_x_continuous()
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
