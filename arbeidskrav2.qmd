@@ -1,0 +1,36 @@
+---
+title: "sok_1005_assignment2"
+format: pdf
+editor: visual
+---
+
+## Oppgave 1
+
+```{r}
+#Loading packages
+library(tidyverse)
+library(rvest)  
+library(janitor) 
+library(lubridate) 
+library(quantmod) 
+library(dplyr)
+library(zoo)
+```
+
+```{r}
+#Loading url and starts to scrape
+url <- read_html("https://www.motor.no/aktuelt/motors-store-vintertest-av-rekkevidde-pa-elbiler/217132")
+
+table <- url %>%
+  html_table(fill = TRUE)
+
+table_range <- table[[1]]
+table_range <- table_range[-1,]
+
+#Endrer navn på kolonnene
+colnames(table_range) <- c("Modell", "Wltp", "Stopp", "Avvik")
+```
+
+```{r}
+ggplot(table_range, aes(x = ))
+```
