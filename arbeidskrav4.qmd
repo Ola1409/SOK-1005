@@ -1,0 +1,151 @@
+---
+title: "sok_1005_arbeidskrav4"
+format: html
+editor: visual
+---
+
+## Arbeidskrav 4
+
+```{r}
+rm (list = ls())
+library(tidyverse)
+library(lubridate)
+library(quantmod)
+library(janitor)
+library(plotly)
+library(knitr)
+```
+
+```{r}
+dataset <- read.csv("https://raw.githubusercontent.com/uit-sok-1005-v23/uit-sok-1005-v23.github.io/main/storedata.csv") %>% 
+  clean_names()
+```
+
+### Task 1
+
+For the last 3 months of 2017, calculate the total Sales by month, for Region 1 and Region 9 in the Customer_Segment, Corporate, and Consumer.
+
+```{r}
+table1 <- dataset %>% 
+  #Making order_date as a true date and mutates new columns for day, month, year.
+  mutate(order_date = as.Date(order_date)) %>% 
+  mutate(year = year(order_date), 
+         month = month(order_date), 
+         day = day(order_date)) %>% 
+  #Filtering year, months, customer segments and region 1 and 9
+  filter(year=="2017",
+         month >= 10,
+         customer_segment %in% c("Corporate", "Consumer"),
+         region %in% c("Region 1", "Region 9")) %>% 
+
+  group_by(region, month, customer_segment) %>%
+  #Getting total sales from sales by sum-command
+  summarize(total_sales = sum(sales)) %>%
+  #Renaming to make it more clear
+  rename("Region" = "region",
+         "Month" = "month",
+         "Customer segment" = "customer_segment",
+         "Total sales" = "total_sales") %>% 
+  arrange(Region, Month)
+
+```
+
+Make a plot of the monthly total Sales in Region 1 and Region 13 in 2015, 2016, and 2017.
+
+```{r}
+figure1 <- dataset %>% 
+  mutate(order_date = as.Date(order_date)) %>% 
+  mutate(year = year(order_date), 
+         month = month(order_date, label = TRUE), 
+         day = day(order_date)) %>% 
+  filter(year %in% c("2015",
+                     "2016",
+                     "2017"),
+         region %in% c("Region 1",
+                       "Region 13")) %>% 
+  group_by(region, month, year) %>%
+
+  summarize(total_sales = sum(sales)) %>% 
+  mutate(date = make_date(year,month))
+
+figure1 %>% 
+  ggplot(aes(x = month, y = total_sales))+
+  geom_col(aes(fill=region), position="dodge")+
+  theme_bw()+
+  labs(x="",
+       y="Total sales",
+       title="Monthly total sales in Region 1 and Region 13",
+       subtitle = "For years: 2015, 2016, 2017",
+       color="Region") +
+  scale_y_continuous(labels = scales::dollar) +
+  scale_fill_manual(values = c("Region 1" = "#8fc3f8",
+                               "Region 13" = "#567595"))+
+  theme(legend.position="right") +
+  scale_x_discrete(expand = c(0,0),
+                   labels = function(x) str_to_title(x))+
+  facet_wrap(~year, nrow=3) 
+```
+
+Table 2: Where the total sales are greater in region 13 than in region 1
+
+```{r}
+table2 <- figure1 %>% 
+  #New columns for region 1 and 13
+  pivot_wider(names_from = region,
+              values_from = total_sales) %>%
+  #Filtering when region 13 has bigger amount of total sales
+  filter(`Region 13` > `Region 1`) %>% 
+  select(-date) %>% 
+  rename("Month" = "month", "Year" = "year") %>% 
+  arrange(Year, Month)
+```
+
+Find the average Profit per Customer_Segment and Product_Category in 2017, for all regions except Region 3, 5 and 8. What segment produced the highest average profit?
+
+```{r}
+table3 <- dataset %>% 
+  mutate(year = year(order_date), 
+        month = month(order_date), 
+        day = day(order_date)) %>% 
+  #Filtering for every region except region 3, 5 and 8
+  filter(year == 2017, region %in% c("Region 1",
+                                      "Region 2",
+                                      "Region 4",
+                                      "Region 6",
+                                      "Region 7",
+                                      "Region 9",
+                                      "Region 10",
+                                      "Region 11",
+                                      "Region 12",
+                                      "Region 13")) %>% 
+  group_by(customer_segment, product_category) %>%
+  #Gets the average profit by mean-command
+  summarise(average_profit = mean(profit)) %>% 
+  arrange(desc(average_profit)) %>% 
+  rename("Customer segment" = "customer_segment",
+         "Product category" = "product_category",
+         "Average profit" = "average_profit")
+```
+
+## Task 2
+
+```{r}
+xom_stock <- data.frame(getSymbols("XOM",
+                             src = "yahoo",
+                             auto.assign = FALSE)) %>% 
+  clean_names() %>% 
+  rownames_to_column(var="date") %>% 
+  rename("adj_close" = "xom_adjusted",
+         "volume" = "xom_volume") %>% 
+  select(date, adj_close, volume) %>% 
+  mutate(date = as.Date(date)) %>% 
+  filter(date >= "2010-01-04" & date <= "2022-12-31") %>% 
+  mutate(year = year(date), 
+         month = month(date), 
+         day = day(date)) %>% 
+  group_by(year, month) %>% 
+  summarise(exxon = weighted.mean(adj_close, volume)) %>% 
+  mutate(date = make_date(year,month)) %>% 
+  ungroup() %>% 
+  select(date, exxon)
+```
